@@ -177,18 +177,18 @@ class XMLComponent(ExplicitComponent):
 
     def setup(self):
         for name, value in self.inputs_from_xml.items():
-            if not isinstance(value, float) and not isinstance(value, np.ndarray):
-                # TODO: pass_by_obj
-                # raise NotImplementedError('pass-by-object variables are not yet supported by OpenMDAO 2.0')
-                pass
+            if (not isinstance(value, float) and not isinstance(value, np.ndarray)) or \
+                        (isinstance(value, float) and np.isnan(value)) or \
+                        (isinstance(value, np.ndarray) and any(np.isnan(value))):
+                self.add_discrete_input(name, value)
             else:
                 self.add_input(name, value)
 
         for name, value in self.outputs_from_xml.items():
-            if not isinstance(value, float) and not isinstance(value, np.ndarray):
-                # TODO: pass_by_obj
-                # raise NotImplementedError('pass-by-object variables are not yet supported by OpenMDAO 2.0')
-                pass
+            if (not isinstance(value, float) and not isinstance(value, np.ndarray)) or \
+                        (isinstance(value, float) and np.isnan(value)) or \
+                        (isinstance(value, np.ndarray) and any(np.isnan(value))):
+                self.add_discrete_output(name, value)
             else:
                 # Use the value stored in the input.xml as a reference value
                 if isinstance(value, np.ndarray):
@@ -257,8 +257,8 @@ class XMLComponent(ExplicitComponent):
 
         return input_xml, output_xml, partials_xml
 
-    def write_input_file(self, file, inputs):
-        # type: (Union[str, etree._ElementTree], Vector) -> None
+    def write_input_file(self, file, inputs, discrete_inputs=None):
+        # type: (Union[str, etree._ElementTree], Vector, Vector) -> None
         """Write the current input values to an input XML file.
 
         Parameters
@@ -268,6 +268,9 @@ class XMLComponent(ExplicitComponent):
 
             inputs : Vector
                 Input vector of this `Component`.
+
+            discrete_inputs : Vector
+                Discrete input vector of this `Component`.
         """
         # Create new root element and an ElementTree
         root = etree.Element(param_to_xpath(list(self.inputs_from_xml)[0]).split('/')[1])
@@ -277,12 +280,15 @@ class XMLComponent(ExplicitComponent):
         for param in self.inputs_from_xml:
             if param in inputs:
                 xml_safe_create_element(doc, param_to_xpath(param), inputs[param])
+            elif param in discrete_inputs:
+                xml_safe_create_element(doc, param_to_xpath(param), discrete_inputs[param])
 
         # Write the tree to an XML file
         doc.write(file, pretty_print=True, xml_declaration=True, encoding='utf-8')
 
-    def read_outputs_file(self, file, outputs):
-        # type: (Union[str, etree._ElementTree], Vector) -> None
+
+    def read_outputs_file(self, file, outputs, discrete_outputs=None):
+        # type: (Union[str, etree._ElementTree], Vector, Vector) -> None
         """Read the outputs from a given XML file and store them in this `Component`'s variables.
 
         Parameters
@@ -292,12 +298,17 @@ class XMLComponent(ExplicitComponent):
 
             outputs : Vector
                 Output vector of this `Component`.
+
+            discrete_outputs : Vector
+                Discrete output vector of this `Component`.
         """
         # Extract the results from the output xml
         for xpath, value in xml_to_dict(file).items():
             name = xpath_to_param(xpath)
             if name in self.outputs_from_xml and name in outputs:
                 outputs[name] = value
+            elif name in self.outputs_from_xml and name in discrete_outputs:
+                discrete_outputs[name] = value
 
     def read_partials_file(self, file, partials):
         # type: (Union[str, etree._ElementTree], Vector) -> None
@@ -323,7 +334,7 @@ class XMLComponent(ExplicitComponent):
                     except Exception as e:
                         print(e.message)
 
-    def compute(self, inputs, outputs):
+    def compute(self, inputs, outputs, discrete_inputs=None, discrete_outputs=None):
         # type: (Vector, Vector) -> None
         """Write the input XML file, call `execute()`, and read the output XML file to obtain the results.
 
@@ -339,7 +350,7 @@ class XMLComponent(ExplicitComponent):
         input_xml, output_xml, _ = self.generate_file_names()
 
         if self.inputs_from_xml:
-            self.write_input_file(input_xml, inputs)
+            self.write_input_file(input_xml, inputs, discrete_inputs)
             if self.base_file is not None:
                 xml_merge(self.base_file, input_xml)
 
@@ -358,7 +369,7 @@ class XMLComponent(ExplicitComponent):
                 pass
 
         if self.outputs_from_xml:
-            self.read_outputs_file(output_xml, outputs)
+            self.read_outputs_file(output_xml, outputs, discrete_outputs)
 
             # If files should not be kept, delete the output XML file
             if not self.keep_files:

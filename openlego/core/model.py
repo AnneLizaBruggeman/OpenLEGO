@@ -496,6 +496,24 @@ class LEGOModel(CMDOWSObject, Group):
         return coupling_vars
 
     @cached_property
+    def discrete_vars(self):
+        # type: () -> Dict[str]
+        """:obj:`list`: Dictionary with discrete variables and their type (float or str)."""
+        discrete_vars = {}
+        for component in self.discipline_components.values():
+            for name, value in component.variables_from_xml.items():
+                if (not isinstance(value, float) and not isinstance(value, np.ndarray)) or \
+                        (isinstance(value, float) and np.isnan(value)) or \
+                        (isinstance(value, np.ndarray) and any(np.isnan(value))):
+                    if isinstance(value, float):
+                        discrete_vars[name] = float('nan')
+                    elif isinstance(value, np.ndarray):
+                        discrete_vars[name] = [float('nan')] * len(value)
+                    else:
+                        discrete_vars[name] = ''
+        return discrete_vars
+
+    @cached_property
     def coupling_var_copies(self):
         # type: () -> Dict[str, str]
         """:obj:`dict`: Dictionary with coupling variable copies."""
@@ -1136,7 +1154,10 @@ class LEGOModel(CMDOWSObject, Group):
 
         # Add system constants
         for name, shape in self.model_constants.items():
-            coordinator.add_output(name, shape=shape)
+            if name in self.discrete_vars.keys():
+                coordinator.add_discrete_output(name, self.discrete_vars[name])
+            else:
+                coordinator.add_output(name, shape=shape)
 
         return coordinator
 
