@@ -22,10 +22,13 @@ from __future__ import absolute_import, division, print_function
 import abc
 import inspect
 import os
+import sys
 
 from six import string_types
 
 from openlego.partials.partials import Partials
+from openlego.utils.xml_utils import xml_merge
+from openlego.utils.general_utils import get_args
 
 
 class AbstractDiscipline(object):
@@ -157,3 +160,29 @@ class AbstractDiscipline(object):
                 Path to the sensitivities XML file.
         """
         Partials().write(partials_file)
+
+    def run_tool(self, sys_argv):
+        class_name = self.__class__.__name__
+        class_name_lc = class_name.lower()
+
+        args = get_args(sys_argv)
+
+        out_file = args.out_file.format(class_name_lc)
+
+        if args.test:
+            in_file = '__test__{}_input.xml'.format(class_name_lc)
+            with open(in_file, 'wb') as f:
+                f.write(self.generate_input_xml())
+            self.execute(in_file, out_file)
+            sys.stdout.write('Executed test run of {}.py with input file "{}" and output file '
+                             '"{}".\n'.format(class_name, in_file, out_file))
+        else:
+            in_file = args.in_file
+            if not os.path.isfile(in_file):
+                raise AssertionError('could not find the input file "{}" in the folder.'
+                                     .format(in_file))
+            self.execute(in_file, out_file)
+            sys.stdout.write('Executed run of {}.py with input file "{}" and output file "{}".\n'
+                             .format(class_name, in_file, out_file))
+        if args.merge_files:
+            xml_merge(in_file, out_file, out_file)
