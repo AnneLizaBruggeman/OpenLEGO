@@ -151,10 +151,15 @@ def xml_to_dict(xml):
             parent = child.getparent()
 
             tag = child.tag
-            for name, value in child.items():
-                # Exclude special purpose attribute: mapType
-                if name != 'mapType':
+            add_tag = ''
+            for name, value in sorted(child.items()):
+                # Make sure the uID is the first attribute
+                if name == 'uID':
                     tag += r'[@%s="%s"]' % (name, value)
+                # Exclude special purpose attribute: mapType
+                elif name != 'mapType':
+                    add_tag += r'[@%s="%s"]' % (name, value)
+            tag += add_tag
 
             if parent is not None:
                 siblings = parent.findall(tag)
