@@ -1152,7 +1152,10 @@ class LEGOModel(CMDOWSObject, Group):
 
         # Add system constants
         for name, shape in self.model_constants.items():
-            coordinator.add_output(name, shape=shape)
+            if name in self.discrete_vars.keys():
+                coordinator.add_discrete_output(name, self.discrete_vars[name])
+            else:
+                coordinator.add_output(name, shape=shape)
 
         return coordinator
 
