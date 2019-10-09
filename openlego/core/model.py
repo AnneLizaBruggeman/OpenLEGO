@@ -261,11 +261,13 @@ class LEGOModel(CMDOWSObject, Group):
         """:obj:`dict`: Dictionary of parameters that are mapped in the CMDOWS file, for example as
          copies."""
         mapped_params = dict()
-        for elem_category in self.elem_arch_elems.find('parameters').iterchildren():
-            for elem_param in elem_category.iterchildren():
-                param, mapped = get_related_parameter_uid(elem_param, self.elem_cmdows)
-                if mapped is not None:
-                    mapped_params.update({param: mapped})
+        parameters = self.elem_arch_elems.find('parameters')
+        if parameters is not None:
+            for elem_category in parameters.iterchildren():
+                for elem_param in elem_category.iterchildren():
+                    param, mapped = get_related_parameter_uid(elem_param, self.elem_cmdows)
+                    if mapped is not None:
+                        mapped_params.update({param: mapped})
         return mapped_params
 
     @cached_property

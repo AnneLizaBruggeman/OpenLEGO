@@ -54,7 +54,7 @@ re_atr = re.compile(r'\[@' + pttrn_attr_name + "=['\"]" + pttrn_attr_val + "['\"
 re_ind = re.compile(r'\[([0-9]+?)\]')
 
 # Regular expressions to match attributes and indices within OpenMDAO variables transformed from xpaths
-re_atr_inv = re.compile(r':_:' + pttrn_attr_val + ':_:' + pttrn_attr_val + r'(?=/|$)')
+re_atr_inv = re.compile(r':_:' + pttrn_attr_val + ':_:' + pttrn_attr_val + r'(?=/|$|:)')
 re_ind_inv = re.compile(r':_:_([0-9]+?)(?=/|$)')
 
 parser = etree.XMLParser(remove_blank_text=True, encoding='utf-8')
